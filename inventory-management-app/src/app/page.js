@@ -27,6 +27,8 @@ const style = {
   gap: 3,
 }
 
+
+
 export default function Home() {
   // We'll add our component logic here
 
@@ -45,6 +47,7 @@ export default function Home() {
       inventoryList.push({ name: doc.id, ...doc.data() })
     })
     setInventory(inventoryList)
+    console.log('setting inventory')
   }
 
   useEffect(() => {
