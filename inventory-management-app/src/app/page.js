@@ -40,6 +40,10 @@ export default function Home() {
   const updateInventory = async () => {
     const snapshot = query(collection(firestore, 'inventory'))
     const docs = await getDocs(snapshot)
+
+    // const inventoryCollection = collection(firestore, 'inventory')
+    // const snapshot = await getDocs(inventoryCollection)
+
     const inventoryList = []
     docs.forEach((doc) => {
       inventoryList.push({ name: doc.id, ...doc.data() })
