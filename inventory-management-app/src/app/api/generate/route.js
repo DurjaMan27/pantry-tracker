@@ -1,6 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
+// inventory-management-app/src/app/api/generate/route.js
+
 export async function POST(req, res) {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
@@ -15,7 +17,7 @@ export async function POST(req, res) {
         const response  = await result.response
         const output = await response.text()
 
-        return NextResponse.json({ output: output})
+        return NextResponse.json({ output: output })
     } catch (error) {
         console.log("error")
     }
