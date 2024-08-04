@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
+import { Configuration, OpenAIApi } from 'openai';
 import { Box, Stack, Typography, Button, Modal, TextField } from '@mui/material';
 import { firestore } from '../firebase';
 import {
@@ -26,6 +27,10 @@ const style = {
   flexDirection: 'column',
   gap: 3,
 }
+
+const client = new OpenAI({
+  apiKey: process.env['OPENAI_API_KEY'],
+});
 
 export default function Home() {
   // We'll add our component logic here
@@ -63,7 +68,8 @@ export default function Home() {
       const { quantity } = docSnap.data()
       await setDoc(docRef, { quantity: quantity + 1 })
     } else {
-      await setDoc(docRef, { quantity: 1 })
+      const {category} = 0
+      await setDoc(docRef, { quantity: 1, category: category })
     }
     await updateInventory()
   }
