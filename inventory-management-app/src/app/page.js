@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { Configuration, OpenAIApi } from 'openai';
-import { Box, Stack, Typography, Button, Modal, TextField, CircularProgress } from '@mui/material';
+import { Box, Stack, Typography, Button, Modal, TextField, CircularProgress, Grid } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search'
+import CloseIcon from '@mui/icons-material/Close'
 import { firestore } from '../firebase';
 import {
   collection,
@@ -11,6 +13,10 @@ import {
   setDoc,
   deleteDoc,
   getDoc,
+  orderBy,
+  startAt,
+  endAt,
+  where
 } from 'firebase/firestore';
 
 const style = {
@@ -32,10 +38,13 @@ export default function Home() {
   // We'll add our component logic here
 
   const [inventory, setInventory] = useState([])
+  const [filteredItems, setFilteredItems] = useState([])
   const [open, setOpen] = useState(false)
   const [itemName, setItemName] = useState('')
+  const [filterName, setFilterName] = useState('')
   const [category, setCategory] = useState("")
   const [loading, setLoading] = useState(false)
+  const [filtering, setFiltering] = useState(false)
 
   const generateText = async (item) => {
     const propername = item.charAt(0).toUpperCase() + item.slice(1).toLowerCase()
@@ -54,6 +63,9 @@ export default function Home() {
 
       if (response.ok) {
         setCategory(data.output)
+        console.log("here is output")
+        console.log(data.output)
+        return data.output
       } else {
         setCategory("Other")
       }
@@ -86,13 +98,17 @@ export default function Home() {
     // const docRef = doc(collection(firestore, 'inventory'), item)
     const docSnap = await getDoc(docRef)
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data()
-      await setDoc(docRef, { quantity: quantity + 1 })
+      const { quantity, category } = docSnap.data()
+      await setDoc(docRef, { quantity: quantity + 1, category: category })
     } else {
+      console.log("start loading")
       setLoading(true)
-      await generateText(item)
+      console.log("currently loading")
+      const categoryReturn = await generateText(item)
+      console.log("done generating")
       setLoading(false)
-      await setDoc(docRef, { quantity: 1, category: category })
+      console.log("stop loading")
+      await setDoc(docRef, { quantity: 1, category: categoryReturn })
     }
     await updateInventory()
   }
@@ -101,15 +117,46 @@ export default function Home() {
     const docRef = doc(collection(firestore, 'inventory'), item)
     const docSnap = await getDoc(docRef)
     if (docSnap.exists()) {
-      const { quantity } = docSnap.data()
+      const { quantity, category } = docSnap.data()
       if (quantity === 1) {
         await deleteDoc(docRef)
       } else {
-        await setDoc(docRef, { quantity: quantity - 1 })
+        await setDoc(docRef, { quantity: quantity - 1, category: category })
       }
     }
     await updateInventory()
   }
+
+  const filter = async (searchString) => {
+
+    const snapshot = query(collection(firestore, 'inventory'))
+    const docs = await getDocs(snapshot)
+
+    const inventoryList = [];
+    docs.forEach(doc => {
+      const docName = doc.id
+      const docId = doc.id.toLowerCase();
+      const docData = doc.data();
+
+      // Check if document ID starts with the query or matches exactly
+      if (docId.startsWith(searchString.toLowerCase()) || docId === searchString.toLowerCase()) {
+        inventoryList.push({ name: docName, ...docData });
+      } else {
+        // Check if any of the document's values start with or match the query
+        for (const key in docData) {
+          if (docData[key] && typeof docData[key] === 'string' &&
+            (docData[key].toLowerCase().startsWith(searchString.toLowerCase()) || docData[key].toLowerCase() === searchString.toLowerCase())) {
+                inventoryList.push({ name: docName, ...docData });
+            break;
+          }
+        }
+      }
+    });
+
+
+    setFilteredItems(inventoryList)
+  }
+
 
   const handleOpen = () => setOpen(true)
   const handleClose = () => setOpen(false)
@@ -131,15 +178,10 @@ export default function Home() {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style}>
-          { loading && (
-            <Box display = "flex" justifyContent = "center" alignItems = "center">
-              <CircularProgress color="secondary" />
-            </Box>
-          )}
           <Typography id="modal-modal-title" variant="h6" component="h2">
             Add Item
           </Typography>
-          <Stack width="100%" direction={'row'} spacing={2}>
+          <Stack width="100%" direction={'row'} spacing={3}>
             <TextField
               id="outlined-basic"
               label="Item"
@@ -161,6 +203,11 @@ export default function Home() {
           </Stack>
         </Box>
       </Modal>
+      { loading && (
+        <Box display = "flex" justifyContent = "center" alignItems = "center">
+          <CircularProgress />
+        </Box>
+      )}
       <Button variant="contained" onClick={handleOpen}>
         Add New Item
       </Button>
@@ -177,8 +224,36 @@ export default function Home() {
             Inventory Items
           </Typography>
         </Box>
-        <Stack width="800px" height="300px" spacing={2} overflow={'auto'}>
-          {inventory.map(({name, quantity, category}) => (
+        <Box width="800" height="100px" padding="25px" bgcolor={"#ffffff"} justifyContent={"center"} alignItems={"center"}>
+          <Grid container spacing={1}>
+            <Grid item xs={9}>
+              <TextField value={filterName} id="outlined-basic" label="Filter by name, category, or quantity" variant="outlined" fullWidth onChange={(e) => {
+                setFilterName(e.target.value)
+                if(e.target.value !== "") {
+                  filter(e.target.value)
+                  setFiltering(true)
+                } else {
+                  setFiltering(false)
+                }
+              }}/>
+            </Grid>
+            <Grid item xs={2}>
+              <Button onClick={() => {
+                filter(filterName)
+                setFiltering(true)
+                handleClose()
+              }} variant="contained"><SearchIcon />Filter</Button>
+            </Grid>
+            <Grid item xs={1}>
+              { filtering && (
+                <Button onClick={() => {setFiltering(false); setFilterName("")}} variant="contained"><CloseIcon /></Button>
+              )}
+            </Grid>
+          </Grid>
+        </Box>
+
+        <Stack width="800px" height="300px" spacing={3} overflow={'auto'}>
+          { filtering && filteredItems.map(({ name, quantity, category }) => (
             <Box
               key={name}
               width="100%"
@@ -192,10 +267,35 @@ export default function Home() {
               <Typography variant={'h3'} color={'#333'} textAlign={'center'}>
                 {name.charAt(0).toUpperCase() + name.slice(1)}
               </Typography>
-              <Typography variant={'h3'} color={'#333'} textAlign={'center'}>
-                {category}
+              <Typography variant={'h5'} color={'#333'} textAlign={'center'}>
+                Category: {category}
               </Typography>
+              <Typography variant={'h5'} color={'#333'} textAlign={'center'}>
+                Quantity: {quantity}
+              </Typography>
+              <Button variant="contained" onClick={() => removeItem(name)}>
+                Remove
+              </Button>
+            </Box>
+          ))}
+          { !filtering && inventory.map(({name, quantity, category }) =>(
+            <Box
+              key={name}
+              width="100%"
+              minHeight="150px"
+              display={'flex'}
+              justifyContent={'space-between'}
+              alignItems={'center'}
+              bgcolor={'#f0f0f0'}
+              paddingX={5}
+            >
               <Typography variant={'h3'} color={'#333'} textAlign={'center'}>
+                {name.charAt(0).toUpperCase() + name.slice(1)}
+              </Typography>
+              <Typography variant={'h5'} color={'#333'} textAlign={'center'}>
+                Category: {category}
+              </Typography>
+              <Typography variant={'h5'} color={'#333'} textAlign={'center'}>
                 Quantity: {quantity}
               </Typography>
               <Button variant="contained" onClick={() => removeItem(name)}>
