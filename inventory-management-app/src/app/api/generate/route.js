@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 // inventory-management-app/src/app/api/generate/route.js
 
-export async function POST(req, res) {
+export const POST = async (req, res) => {
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
 

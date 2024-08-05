@@ -37,7 +37,7 @@ export default function Home() {
   const [category, setCategory] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const generateText = async(item) => {
+  const generateText = async (item) => {
     const propername = item.charAt(0).toUpperCase() + item.slice(1).toLowerCase()
     const categories = ["Frozen", "Produce", "Canned Good", "Baking Item", "Pasta", "Drink", "Cereal", "Dairy", "Dessert", "Other"]
     const prompt = `Given the following item ${propername}, which of the following categories does this item belong to? Categories: ${categories}. If you cannot find any group that it belongs to, place it in "Other". Do not include anything other than the category that the item belongs to in your response.`
@@ -45,7 +45,7 @@ export default function Home() {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
-          'Content-type': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({ body: prompt })
       });
@@ -58,7 +58,8 @@ export default function Home() {
         setCategory("Other")
       }
     } catch (error) {
-      console.error("Failing")
+      console.log("generate text catch error")
+      console.error(error)
     }
   }
 
